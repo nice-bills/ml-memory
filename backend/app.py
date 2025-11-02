@@ -10,9 +10,9 @@ import traceback
 
 # --- New Database Imports ---
 from sqlalchemy.orm import Session
-from .database import engine, Base, get_db
-from .models import Conversation, Message
-from .worker import embed_and_save_task
+from database import engine, Base, get_db
+from models import Conversation, Message
+from worker import embed_and_save_task
 # ----------------------------
 
 # --- Load environment variables ---

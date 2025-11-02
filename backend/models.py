@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .database import Base # Note the dot-import for modularity
+from database import Base # Note the dot-import for modularity
 
 class Conversation(Base):
     """Represents a single chat session."""

@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from backend.app import app, get_db
-from backend.database import Base
-from backend.models import Conversation, Message
+from app import app, get_db
+from database import Base
+from models import Conversation, Message
 import pytest
 from unittest.mock import MagicMock
 import os
@@ -49,6 +49,7 @@ def setup_test_db():
 
     # Tear down: Remove the database file after tests are done
     Base.metadata.drop_all(bind=test_engine)
+    test_engine.dispose()
     if os.path.exists("./test_db.db"):
         os.remove("./test_db.db")
 
@@ -57,7 +58,7 @@ def setup_test_db():
 
 def test_root_redirect():
     """Test the root endpoint redirects to /docs."""
-    response = client.get("/", allow_redirects=False)
+    response = client.get("/", follow_redirects=False)
     assert response.status_code == 307
     assert response.headers['location'] == '/docs'
 
@@ -75,16 +76,15 @@ def test_chat_new_conversation(mocker):
     We mock the Groq client and the Celery worker task.
     """
     # Mock the slow Groq response stream to return instantly
-    mock_groq_stream = MagicMock()
-    mock_groq_stream.__enter__.return_value = [
+    mock_groq_stream = [
         MagicMock(choices=[MagicMock(delta=MagicMock(content="Hello!"))]),
-        MagicMock(choices=[MagicMock(delta=MagicMock(content=""))])
+        MagicMock(choices=[MagicMock(delta=MagicMock(content=None))])
     ]
     
-    mocker.patch('backend.main.groq_client.chat.completions.create', return_value=mock_groq_stream)
+    mocker.patch('app.groq_client.chat.completions.create', return_value=mock_groq_stream)
     
     # Mock the Celery worker function (the slow part)
-    mock_worker = mocker.patch('backend.main.embed_and_save_task.delay')
+    mock_worker = mocker.patch('app.embed_and_save_task.delay')
 
     # Send the request to create a new conversation
     response = client.post(
@@ -108,16 +108,16 @@ def test_chat_new_conversation(mocker):
     assert mock_worker.call_count == 2
     
     # Check the first call (user input)
-    user_call_args = mock_worker.call_args_list[0][0]
-    assert user_call_args[0] == "Test query for new chat" # text_to_embed
-    assert user_call_args[1]['user_id'] == "test_user_42"
-    assert user_call_args[1]['role'] == "user"
-    assert user_call_args[1]['conversation_id'] == int(new_convo_id)
+    user_call = mock_worker.call_args_list[0]
+    assert user_call.args[0] == "Test query for new chat" # text_to_embed
+    assert user_call.kwargs['user_id'] == "guest_session"
+    assert user_call.kwargs['role'] == "user"
+    assert user_call.kwargs['conversation_id'] == int(new_convo_id)
 
     # Check the second call (assistant output)
-    assistant_call_args = mock_worker.call_args_list[1][0]
-    assert assistant_call_args[0] == "Hello!" # full_response
-    assert assistant_call_args[1]['role'] == "assistant"
+    assistant_call = mock_worker.call_args_list[1]
+    assert assistant_call.args[0] == "Hello!" # full_response
+    assert assistant_call.kwargs['role'] == "assistant"
     
     return int(new_convo_id) # Return ID for subsequent test
 

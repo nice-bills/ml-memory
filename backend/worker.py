@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 from brain import PersistentMemory
 from celery_config import celery_app
 from sqlalchemy.orm import Session
-from .database import SessionLocal
-from .models import Message, Conversation
+from database import SessionLocal
+from models import Message, Conversation
 from sqlalchemy.sql import func 
 
 # --- Load environment variables ---
