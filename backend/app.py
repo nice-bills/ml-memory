@@ -1,6 +1,3 @@
-# ==============================================
-# 🚀 main.py — FastAPI Chatbot with Streaming + Pinecone Memory
-# ==============================================
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse, StreamingResponse
 from pydantic import BaseModel
@@ -12,8 +9,8 @@ import traceback
 import time
 from typing import Generator
 
-# --- Load environment variables ---
 load_dotenv()
+
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
@@ -22,7 +19,6 @@ if not PINECONE_API_KEY:
 if not GROQ_API_KEY:
     raise ValueError("Missing Groq API key.")
 
-# --- Initialize components ---
 print("Initializing persistent memory...")
 try:
     memory = PersistentMemory(api_key=PINECONE_API_KEY)
@@ -36,43 +32,38 @@ groq_client = Groq()
 
 app = FastAPI(title="ML Engineering Chatbot (Streaming)", version="2.0.0")
 
-# --- CORS Middleware (IMPORTANT for frontend) ---
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Your React app's URL
+    allow_origins=["http://localhost:3000"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# --- Request Model ---
 class ChatRequest(BaseModel):
     user_input: str
 
-# --- Streaming Generator Function ---
 def stream_groq_response(messages: list, memory_instance: PersistentMemory) -> Generator[str, None, None]:
     """
     Yields chunks from Groq API and saves the full response to memory.
     """
     full_response = ""
     try:
-        # 1. Create the streaming completion
         stream = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=messages,
             temperature=0.7,
             max_tokens=2048,
             top_p=1,
-            stream=True,  # <-- THE KEY CHANGE
+            stream=True,  
         )
 
-        # 2. Yield each chunk as it arrives
         for chunk in stream:
             content = chunk.choices[0].delta.content
             if content:
                 full_response += content
-                yield content  # Send chunk to frontend
+                yield content 
     
     except Exception as e:
         print(f"Groq streaming error: {e}")
@@ -80,7 +71,6 @@ def stream_groq_response(messages: list, memory_instance: PersistentMemory) -> G
         yield "Sorry, an error occurred while streaming the response."
     
     finally:
-        # 3. Save the *full* response to memory *after* streaming is complete
         if memory_instance and full_response.strip():
             try:
                 memory_instance.add_memory(full_response.strip(), role="assistant")
@@ -89,23 +79,20 @@ def stream_groq_response(messages: list, memory_instance: PersistentMemory) -> G
                 print(f"Failed to store assistant stream memory: {e}")
 
 
-# --- Chat Endpoint (Modified for Streaming) ---
 @app.post("/chat")
 def chat_stream(request: ChatRequest):
     user_text = request.user_input.strip()
     print(f"\nReceived query: {user_text}")
 
     if not user_text:
-        return {"error": "Empty input."} # This won't stream, it's a direct error
+        return {"error": "Empty input."}
 
-    # Step 1: Save user input
     if memory:
         try:
             memory.add_memory(user_text, role="user")
         except Exception as e:
             print(f"Memory store failed: {e}")
 
-    # Step 2: Retrieve relevant memories
     relevant_contexts = []
     if memory:
         try:
@@ -116,7 +103,6 @@ def chat_stream(request: ChatRequest):
         except Exception as e:
             print(f"Memory search failed: {e}")
     
-    # Step 3 & 4: Build prompt messages
     base_prompt = ("""
     ### 1. Core Directive
     You are a world-class AI assistant. Your primary directive is to provide the most accurate, in-depth, and helpful responses possible, adhering strictly to the persona and rules defined below.
@@ -165,14 +151,12 @@ def chat_stream(request: ChatRequest):
             {"role": "user", "content": user_text},
         ]
 
-    # Step 5: Return the streaming response
     return StreamingResponse(
         stream_groq_response(messages, memory), 
-        media_type="text/plain"  # Send as a simple text stream
+        media_type="text/plain"  
     )
 
 
-# --- Root Redirect ---
 @app.get("/", include_in_schema=False)
 def redirect_to_docs():
     return RedirectResponse(url="/docs")

@@ -1,0 +1,29 @@
+# 1. Start from the modern, slim Python image you found
+FROM python:3.13.5-slim-bookworm
+
+# 2. Use the fast, official way to install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# 3. Set the working directory
+WORKDIR /code
+
+# 4. Copy our project's "shopping list"
+COPY requirements.txt ./
+
+# 5. Create a virtual environment (like in the example you found)
+RUN uv venv
+
+# 6. Add the virtual environment to the PATH
+ENV PATH="/code/.venv/bin:$PATH"
+
+# 7. Install our dependencies into the virtual environment
+RUN uv pip install -r requirements.txt
+
+# 8. Copy all our code (main.py, brain.py, etc.)
+COPY . .
+
+# 9. Expose the port our app runs on
+EXPOSE 9696
+
+# 10. Run our app (using our 'main.py' file)
+ENTRYPOINT ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9696"]

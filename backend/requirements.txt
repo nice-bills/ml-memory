@@ -6,3 +6,6 @@ huggingface-hub<1.0
 sentence-transformers==5.1.2
 transformers==4.57.1
 huggingface-hub==0.36.0
+pinecone
+pydantic
+python-dotenv
