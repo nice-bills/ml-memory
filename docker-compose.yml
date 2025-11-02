@@ -1,25 +1,49 @@
-# This is the main "conductor" file for your entire application
 version: '3.8'
 
 services:
-  # This is your Python Backend
-  backend:
-    build: ./backend  # Tells Docker to build the image from the ./backend/Dockerfile
-    env_file:
-      - ./backend/.env  # Injects your .env file (with API keys) into the container
+  # --- 1. NEW: The Redis message broker (for Celery) ---
+  redis:
+    image: redis:7-alpine
     ports:
-      - "9696:9696"  # Maps your computer's port 9696 to the container's port 9696
-    # 'backend' will be the hostname for this service on Docker's private network
-    # (e.g., http://backend:9696)
+      - "6379:6379"
 
-  # This is your React Frontend
-  frontend:
-    build: ./frontend  # Tells Docker to build the image from the ./frontend/Dockerfile
+  # --- 2. API service (formerly 'backend') ---
+  api:
+    build: ./backend
+    env_file:
+      - ./backend/.env
     ports:
-      - "3000:3000"  # Maps your computer's port 3000 to the container's port 3000
+      - "9696:9696"
     depends_on:
-      - backend  # Tells Docker to start the backend *before* the frontend
+      - redis
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "9696"]
+    # --- KEY CHANGE: Maps the chat_history.db file to a persistent volume ---
+    volumes:
+      - chat-data:/code/data
+  
+  # --- 3. NEW: Worker service (for background embedding) ---
+  worker:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - redis
+    command: ["celery", "-A", "celery_config.celery_app", "worker", "--loglevel=info"]
+    # --- Worker also needs access to the persistent database volume ---
+    volumes:
+      - chat-data:/code/data
+      
+  # --- 4. Frontend service (UPDATED to talk to 'api') ---
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
     environment:
-      # This is how your React app will find the backend.
-      # We use the service name 'backend' as the hostname.
-      NEXT_PUBLIC_API_URL: http://backend:9696
+      # URL now uses the service name 'api' instead of 'backend'
+      NEXT_PUBLIC_API_URL: http://api:9696
+
+# --- 5. Defines the persistent volume outside of services ---
+volumes:
+  chat-data:

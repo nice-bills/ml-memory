@@ -9,3 +9,9 @@ huggingface-hub==0.36.0
 pinecone
 pydantic
 python-dotenv
+celery
+redis
+sqlalchemy
+pydantic-settings
+pytest 
+httpx
