@@ -1,0 +1,25 @@
+# This is the main "conductor" file for your entire application
+version: '3.8'
+
+services:
+  # This is your Python Backend
+  backend:
+    build: ./backend  # Tells Docker to build the image from the ./backend/Dockerfile
+    env_file:
+      - ./backend/.env  # Injects your .env file (with API keys) into the container
+    ports:
+      - "9696:9696"  # Maps your computer's port 9696 to the container's port 9696
+    # 'backend' will be the hostname for this service on Docker's private network
+    # (e.g., http://backend:9696)
+
+  # This is your React Frontend
+  frontend:
+    build: ./frontend  # Tells Docker to build the image from the ./frontend/Dockerfile
+    ports:
+      - "3000:3000"  # Maps your computer's port 3000 to the container's port 3000
+    depends_on:
+      - backend  # Tells Docker to start the backend *before* the frontend
+    environment:
+      # This is how your React app will find the backend.
+      # We use the service name 'backend' as the hostname.
+      NEXT_PUBLIC_API_URL: http://backend:9696
