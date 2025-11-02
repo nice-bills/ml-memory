@@ -5,6 +5,7 @@ from groq import Groq
 from brain import PersistentMemory
 from dotenv import load_dotenv
 from typing import Generator, List, Optional
+from datetime import datetime
 import os
 import traceback
 
@@ -64,12 +65,12 @@ class ChatRequest(BaseModel):
 class ConversationResponse(BaseModel):
     id: int
     title: str
-    updated_at: str
+    updated_at: datetime
 
 class MessageResponse(BaseModel):
     role: str
     content: str
-    created_at: str
+    created_at: datetime
 
 
 # --- Streaming Generator Function (MODIFIED) ---

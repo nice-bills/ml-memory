@@ -35,7 +35,7 @@ app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def setup_test_db():
     """Module-level fixture to create and clean the database file."""
     # Ensure the test database file is clean before and after all tests

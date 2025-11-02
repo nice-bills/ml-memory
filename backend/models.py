@@ -12,7 +12,7 @@ class Conversation(Base):
     user_id = Column(String, index=True, default="guest_session") 
     title = Column(String, index=True, default="New Chat")
     created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationship to Messages
     messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
