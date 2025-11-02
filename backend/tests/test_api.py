@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from backend.main import app, get_db
+from backend.app import app, get_db
 from backend.database import Base
 from backend.models import Conversation, Message
 import pytest
